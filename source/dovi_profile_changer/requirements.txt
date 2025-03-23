@@ -1,0 +1,4 @@
+mp4box==0.1.dev0
+PyGithub==2.6.1
+PyGithub==2.6.1
+Requests==2.32.3
