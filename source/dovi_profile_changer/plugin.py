@@ -101,7 +101,7 @@ def on_worker_process(data: dict[str, Any]):
 
     data["exec_command"] = []
 
-    if data["step"] is None:
+    if data.get("step") is None:
         data["step"] = 1
     else:
         data["step"] += 1
