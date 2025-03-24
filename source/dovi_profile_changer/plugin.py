@@ -56,12 +56,18 @@ def on_library_management_file_test(data: dict[str, Any]):
 
     path = data.get("path")
 
+    logger.info(f"Processing file: {path}")
     probe = Probe(logger, allowed_mimetypes=["video"])
     if not probe.file(path):
+        logger.info(f"File is not a video file: {path}")
         return data
 
     settings = Settings(library_id=data.get("library_id"))
-    PluginStreamMapper(settings=settings, probe=probe)
+    mapper = PluginStreamMapper(settings=settings, probe=probe)
+
+    if mapper.streams_need_processing():
+        logger.info(f"File needs processing: {path}")
+        data["add_file_to_pending_tasks"] = True
 
     return data
 
