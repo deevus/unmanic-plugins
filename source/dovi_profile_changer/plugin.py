@@ -9,6 +9,7 @@ import os
 import shutil
 import requests
 import json
+import platform
 from typing import Any, cast
 from unmanic.libs.unplugins.settings import PluginSettings
 from unmanic.libs.system import System
@@ -75,9 +76,18 @@ def on_postprocessor_task_results(data: dict):
 
     return data
 
+machine_map = {
+    "amd64": "x86_64"
+}
+
 def _get_platform(system_info: dict[str, Any]) -> tuple[str, str]:
-    platform = cast(list, system_info.get("platform"))
-    return (platform[0], platform[len(platform) - 1])
+    system = platform.system()
+    machine = platform.machine()
+
+    if machine_map[machine.lower()] is not None:
+        machine = machine_map[machine.lower()]
+
+    return (system, machine)
 
 def _get_bin_path() -> str:
     return os.path.join(os.path.dirname(__file__), "bin")
