@@ -1,0 +1,30 @@
+{
+    "repo": {
+        "id": "repository.deevus",
+        "name": "deevus' unmanic-plugins",
+        "icon": "",
+        "repo_data_directory": "https://raw.githubusercontent.com/deevus/unmanic-plugins/repo/",
+        "repo_data_url": "https://raw.githubusercontent.com/deevus/unmanic-plugins/repo/repo.json"
+    },
+    "plugins": [
+        {
+            "id": "dovi_profile_changer",
+            "name": "DOVI Profile Changer",
+            "author": "deevus",
+            "version": "0.0.1",
+            "tags": "results,postprocessor",
+            "description": "",
+            "compatibility": [
+                1,
+                2
+            ],
+            "platform": [
+                "all"
+            ],
+            "prorities": {
+                "on_library_management_file_test": 99,
+                "on_worker_process": 2
+            }
+        }
+    ]
+}
