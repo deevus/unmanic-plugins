@@ -69,9 +69,11 @@ def on_postprocessor_task_results(data: dict):
 
     return data
 
-def bin_path() -> str:
+def bin_path(tool: str) -> str:
     sys = platform.system().lower()
-    return os.path.join(os.path.dirname(__file__), "bin", sys)
+    ext = ".exe" if sys == "windows" else ""
+
+    return os.path.join(os.path.dirname(__file__), "bin", sys, tool + ext)
 
 def on_worker_process(data: dict[str, Any]):
     """
@@ -94,7 +96,9 @@ def on_worker_process(data: dict[str, Any]):
     system_info = system.info()
     settings = Settings(library_id=data.get("library_id"))
 
-    add_to_path(bin_path())
+    mp4box_path = bin_path("mp4box")
+    dovi_tool_path = bin_path("dovi_tool")
+    ffmpeg_path = 'ffmpeg' if os.name != 'nt' else 'ffmpeg.exe'
 
     data["exec_command"] = []
 
@@ -112,7 +116,7 @@ def on_worker_process(data: dict[str, Any]):
 
     if step == 1:
         data["exec_command"] = [
-            "ffmpeg",
+            ffmpeg_path,
             "-y",
             "-i",
             file_in,
@@ -128,7 +132,7 @@ def on_worker_process(data: dict[str, Any]):
 
     elif step == 2:
         data["exec_command"] = [
-            "dovi_tool",
+            dovi_tool_path,
             "-i",
             file_in,
             "-m",
@@ -142,7 +146,7 @@ def on_worker_process(data: dict[str, Any]):
 
     elif step == 3:
         data["exec_command"] = [
-            "mp4box",
+            mp4box_path,
             "-add",
             f"'{file_in}':dvp=8.1:xps_inband:hdr=none",
             "-brand",
@@ -159,7 +163,7 @@ def on_worker_process(data: dict[str, Any]):
         data["repeat"] = False
 
         data["exec_command"] = [
-            "ffmpeg",
+            ffmpeg_path,
             "-i",
             file_in,
             "-i",
@@ -186,21 +190,3 @@ def on_worker_process(data: dict[str, Any]):
     # ffmpeg -i path_to_hevc.mp4 -i in.mp4 -map 0:v -map 1 -c copy output.mp4
 
     return data
-
-def add_to_path(new_path):
-    """Adds a directory to the PATH environment variable for the current session."""
-    if not os.path.isdir(new_path):
-        logger.warning(f"'{new_path}' is not a valid directory.")
-        return
-
-    # Get the current PATH
-    current_path = os.environ.get('PATH', '')
-
-    # Check if the path is already in PATH
-    if new_path in current_path:
-        logger.warning(f"'{new_path}' is already in PATH.")
-        return
-
-    # Add the new path to the beginning (recommended for precedence)
-    os.environ['PATH'] = new_path + os.pathsep + current_path
-    logger.info(f"Added '{new_path}' to PATH.")
