@@ -217,4 +217,4 @@ jobs:
           BRANCH: repo
           FOLDER: repo
           SQUASH_HISTORY: true
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
