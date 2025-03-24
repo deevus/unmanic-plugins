@@ -178,21 +178,11 @@ def on_worker_process(data: dict[str, Any]):
             "0:v",
             "-map",
             "1",
+            "-map",
+            "-1:v",
             "-c",
             "copy",
             file_out,
         ]
-
-    # Command 1
-    # ffmpeg -y -i 'in.mkv' -dn -c:v copy -vbsf hevc_mp4toannexb -f hevc original.hevc
-
-    # Command 2
-    # dovi_tool -i original.hevc -m 2 convert --discard - -o 'out.hevc'
-
-    # Command 3
-    # MP4Box -add 'out.hevc':dvp=8.1:xps_inband:hdr=none -brand mp42isom -ab dby1 -no-iod -enable 1 'out.mp4' -tmp '/path_to_tmp folder/'
-
-    # Command 4
-    # ffmpeg -i path_to_hevc.mp4 -i in.mp4 -map 0:v -map 1 -c copy output.mp4
 
     return data
