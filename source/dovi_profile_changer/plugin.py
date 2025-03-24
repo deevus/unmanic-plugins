@@ -6,17 +6,11 @@
 """
 import logging
 import os
-import shutil
-import requests
-import json
 import platform
 from typing import Any, cast
 from unmanic.libs.unplugins.settings import PluginSettings
 from unmanic.libs.system import System
 from .lib.ffmpeg import StreamMapper, Probe
-
-DOVI_TOOL_GITHUB="quietvoid/dovi_tool"
-GPAC_DOWNLOAD_LINK="https://download.tsi.telecom-paristech.fr/gpac/new_builds/gpac_latest_head_{}.exe"
 
 logger = logging.getLogger("Unmanic.Plugin.DoviProfileChanger")
 
@@ -73,82 +67,13 @@ def on_postprocessor_task_results(data: dict):
     :return:
     """
 
-
     return data
 
-machine_map = {
-    "amd64": "x86_64"
-}
+def bin_path(tool: str) -> str:
+    sys = platform.system().lower()
+    ext = ".exe" if sys == "windows" else ""
 
-def _get_platform(system_info: dict[str, Any]) -> tuple[str, str]:
-    system = platform.system()
-    machine = platform.machine()
-
-    if machine_map[machine.lower()] is not None:
-        machine = machine_map[machine.lower()]
-
-    return (system, machine)
-
-def _get_bin_path() -> str:
-    return os.path.join(os.path.dirname(__file__), "bin")
-
-def _ensure_dovi_tool(platform: tuple[str, str]) -> None:
-    extension = ".exe" if platform[0] == "Windows" else ""
-    path = os.path.join(_get_bin_path(), f"dovi_tool{extension}")
-
-    if os.path.exists(path):
-        return
-
-    os.makedirs(_get_bin_path(), exist_ok=True)
-
-    # Get the latest release information using GitHub API
-    api_url = f"https://api.github.com/repos/{DOVI_TOOL_GITHUB}/releases/latest"
-    response = requests.get(api_url)
-    if response.status_code != 200:
-        logger.error(f"Failed to fetch latest release info: {response.status_code}")
-        raise RuntimeError(f"Failed to fetch latest release info: {response.status_code}")
-
-    release_data = response.json()
-    tag = release_data["tag_name"]
-
-    asset_file_suffix: str
-    match platform[0]:
-        case "Windows":
-            asset_file_suffix = "pc-windows-msvc.zip"
-        case "Linux":
-            asset_file_suffix = "unknown-linux-musl.tar.gz"
-        case "Darwin":
-            asset_file_suffix = "universal-macOS.zip"
-        case _:
-            raise ValueError(f"Unsupported platform {platform[0]}")
-
-    asset_file_name = f"dovi_tool-{tag}-{platform[1].lower()}-{asset_file_suffix}"
-
-    logger.info(f"Searching for DOVI tool for platform {platform} on GitHub: {asset_file_name}")
-
-    asset = next((asset for asset in release_data["assets"] if asset["name"] == asset_file_name), None)
-    if asset is None:
-        logger.error(f"DOVI tool not found for platform {platform}")
-        raise FileNotFoundError(f"DOVI tool not found for platform {platform}")
-
-    download_url = asset["browser_download_url"]
-    logger.info(f"Found DOVI tool for platform {platform}: {download_url}")
-
-    asset_dest_path = os.path.join(_get_bin_path(), asset_file_name)
-    with requests.get(download_url, stream=True) as r:
-        r.raise_for_status()
-        with open(asset_dest_path, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
-
-    # Unzip the downloaded asset
-    _unpack_asset(asset_dest_path, _get_bin_path())
-
-def _unpack_asset(src: str, dest: str):
-    shutil.unpack_archive(src, dest)
-
-def _ensure_gpac(platform: tuple[str, str]) -> None:
-    pass
+    return os.path.join(os.path.dirname(__file__), "bin", sys, tool + ext)
 
 def on_worker_process(data: dict[str, Any]):
     """
@@ -169,12 +94,33 @@ def on_worker_process(data: dict[str, Any]):
 
     system = System()
     system_info = system.info()
-    platform = _get_platform(system_info)
-
-    _ensure_dovi_tool(platform)
-    _ensure_gpac(platform)
-
     settings = Settings(library_id=data.get("library_id"))
 
+    mp4box_path = bin_path("mp4box")
+    dovi_tool_path = bin_path("dovi_tool")
+
+    data["exec_command"] = []
+
+    if data["step"] is None:
+        data["step"] = 1
+    else:
+        data["step"] += 1
+
+    logger.info(f"Step {data['step']}")
+
+    data["repeat"] = data["step"] < 5
+
+    # Command 1
+    # ffmpeg -y -i 'in.mkv' -dn -c:v copy -vbsf hevc_mp4toannexb -f hevc original.hevc
+
+    # Command 2
+    # dovi_tool -i original.hevc -m 2 convert --discard - -o 'out.hevc'
+
+    # Command 3
+    # MP4Box -add 'out.hevc':dvp=8.1:xps_inband:hdr=none -brand mp42isom -ab dby1 -no-iod -enable 1 'out.mp4' -tmp '/path_to_tmp folder/'
+
+    # Command 4
+    # ffmpeg -y -i 'path_to_hevc.mp4' -i 'path_to.mkv' -i 'path_to.srt' -loglevel error -stats -map "0:v?" -map "1:a:1" -map "2:s?" -dn -map_chapters 0 -movflags +faststart -c:v copy -c:a copy -c:s mov_text -metadata title="Movie Title (2023)" -metadata:s:v:0 handler_name="HEVC HDR10 / Dolby Vision" -metadata:s:a:0 handler_name="EAC3 5.1 Dolby Atmos" -metadata:s:s:0 language=ell -metadata:s:s:0 handler_name="MPEG-4 Timed Text" -strict experimental 'path_to_final.mp4'
+    # ffmpeg -i path_to_hevc.mp4 -i in.mp4 -map 0:v -map 1 -c copy output.mp4
 
     return data
