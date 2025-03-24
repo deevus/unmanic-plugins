@@ -126,7 +126,7 @@ def _ensure_dovi_tool(platform: tuple[str, str]) -> None:
 
     logger.info(f"Searching for DOVI tool for platform {platform} on GitHub: {asset_file_name}")
 
-    asset = next((asset for asset in release_data["assets"] if asset.name == asset_file_name), None)
+    asset = next((asset for asset in release_data["assets"] if asset["name"] == asset_file_name), None)
     if asset is None:
         logger.error(f"DOVI tool not found for platform {platform}")
         raise FileNotFoundError(f"DOVI tool not found for platform {platform}")
