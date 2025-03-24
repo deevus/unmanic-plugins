@@ -115,9 +115,6 @@ def on_worker_process(data: dict[str, Any]):
     step = cast(int, data.get("step"))
 
     if step == 1:
-        file_out = "output.hevc"
-        data["file_out"] = file_out
-
         data["exec_command"] = [
             ffmpeg_path,
             "-y",
@@ -134,9 +131,6 @@ def on_worker_process(data: dict[str, Any]):
         ]
 
     elif step == 2:
-        file_out = "output.dovi.hevc"
-        data["file_out"] = file_out
-
         data["exec_command"] = [
             dovi_tool_path,
             "-i",
@@ -151,9 +145,6 @@ def on_worker_process(data: dict[str, Any]):
         ]
 
     elif step == 3:
-        file_out = "output.mp4box.mp4"
-        data["file_out"] = file_out
-
         data["exec_command"] = [
             mp4box_path,
             "-add",
@@ -169,8 +160,6 @@ def on_worker_process(data: dict[str, Any]):
         ]
 
     elif step == 4:
-        file_out = "final.mp4"
-        data["file_out"] = file_out
         data["repeat"] = False
 
         data["exec_command"] = [
