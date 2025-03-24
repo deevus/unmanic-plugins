@@ -10,10 +10,8 @@ import shutil
 from typing import Any, cast
 from unmanic.libs.unplugins.settings import PluginSettings
 from unmanic.libs.system import System
-from lib.ffmpeg import StreamMapper, Probe
+from .lib.ffmpeg import StreamMapper, Probe
 from github import Github
-import zipfile
-import tarfile
 
 DOVI_TOOL_GITHUB="quietvoid/dovi_tool"
 GPAC_DOWNLOAD_LINK="https://download.tsi.telecom-paristech.fr/gpac/new_builds/gpac_latest_head_{}.exe"
