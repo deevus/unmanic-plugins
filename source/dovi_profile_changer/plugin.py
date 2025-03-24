@@ -7,11 +7,12 @@
 import logging
 import os
 import shutil
+import requests
+import json
 from typing import Any, cast
 from unmanic.libs.unplugins.settings import PluginSettings
 from unmanic.libs.system import System
 from .lib.ffmpeg import StreamMapper, Probe
-from github import Github
 
 DOVI_TOOL_GITHUB="quietvoid/dovi_tool"
 GPAC_DOWNLOAD_LINK="https://download.tsi.telecom-paristech.fr/gpac/new_builds/gpac_latest_head_{}.exe"
@@ -103,10 +104,15 @@ def _ensure_dovi_tool(platform: tuple[str, str]) -> None:
 
     os.makedirs(_get_bin_path(), exist_ok=True)
 
-    github = Github()
-    repo = github.get_repo(DOVI_TOOL_GITHUB)
-    latest_release = repo.get_latest_release()
-    tag = latest_release.tag_name
+    # Get the latest release information using GitHub API
+    api_url = f"https://api.github.com/repos/{DOVI_TOOL_GITHUB}/releases/latest"
+    response = requests.get(api_url)
+    if response.status_code != 200:
+        logger.error(f"Failed to fetch latest release info: {response.status_code}")
+        raise RuntimeError(f"Failed to fetch latest release info: {response.status_code}")
+
+    release_data = response.json()
+    tag = release_data["tag_name"]
 
     asset_file_suffix: str
     match platform[0]:
@@ -123,15 +129,20 @@ def _ensure_dovi_tool(platform: tuple[str, str]) -> None:
 
     logger.info(f"Searching for DOVI tool for platform {platform} on GitHub: {asset_file_name}")
 
-    asset = next((asset for asset in latest_release.assets if asset.name == asset_file_name), None)
+    asset = next((asset for asset in release_data["assets"] if asset.name == asset_file_name), None)
     if asset is None:
         logger.error(f"DOVI tool not found for platform {platform}")
         raise FileNotFoundError(f"DOVI tool not found for platform {platform}")
 
-    logger.info(f"Found DOVI tool for platform {platform}: {asset.browser_download_url}")
+    download_url = asset["browser_download_url"]
+    logger.info(f"Found DOVI tool for platform {platform}: {download_url}")
 
     asset_dest_path = os.path.join(_get_bin_path(), asset_file_name)
-    asset.download_asset(asset_dest_path)
+    with requests.get(download_url, stream=True) as r:
+        r.raise_for_status()
+        with open(asset_dest_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
 
     # Unzip the downloaded asset
     _unpack_asset(asset_dest_path, _get_bin_path())
