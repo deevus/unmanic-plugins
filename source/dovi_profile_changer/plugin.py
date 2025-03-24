@@ -98,6 +98,7 @@ def on_worker_process(data: dict[str, Any]):
 
     mp4box_path = bin_path("mp4box")
     dovi_tool_path = bin_path("dovi_tool")
+    ffmpeg_path = 'ffmpeg' if os.name != 'nt' else 'ffmpeg.exe'
 
     data["exec_command"] = []
 
@@ -115,7 +116,7 @@ def on_worker_process(data: dict[str, Any]):
 
     if step == 1:
         data["exec_command"] = [
-            "ffmpeg",
+            ffmpeg_path,
             "-y",
             "-i",
             file_in,
@@ -167,7 +168,7 @@ def on_worker_process(data: dict[str, Any]):
         data["repeat"] = False
 
         data["exec_command"] = [
-            "ffmpeg",
+            ffmpeg_path,
             "-i",
             file_in,
             "-i",
