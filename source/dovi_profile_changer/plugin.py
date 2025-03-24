@@ -27,19 +27,6 @@ class Settings(PluginSettings):
         super().__init__(*args, **kwargs)
         self.form_settings = {}
 
-class PluginStreamMapper(StreamMapper):
-    settings: Settings
-    probe: Probe
-
-    def __init__(self, *, settings: Settings, probe: Probe):
-        super().__init__(logger, ["video"])
-        self.settings = settings
-        self.probe = probe
-
-    def test_stream_needs_processing(self, stream_info: dict):
-        dovi = [data for data in (stream_info.get("side_data_list") or []) if data.get("side_data_type") == "DOVI configuration record"]
-        return len(dovi) > 0
-
 def on_library_management_file_test(data: dict[str, Any]):
     """
     Runner function - enables additional actions during the library management file tests.
@@ -55,18 +42,18 @@ def on_library_management_file_test(data: dict[str, Any]):
 
     path = data.get("path")
 
-    logger.info(f"Processing file: {path}")
     probe = Probe(logger, allowed_mimetypes=["video"])
     if not probe.file(path):
         logger.info(f"File is not a video file: {path}")
         return data
 
-    settings = Settings(library_id=data.get("library_id"))
-    mapper = PluginStreamMapper(settings=settings, probe=probe)
+    streams = probe.get("streams")
+    for stream_info in streams:
+        dovi = [data for data in (stream_info.get("side_data_list") or []) if data.get("side_data_type") == "DOVI configuration record"]
 
-    if mapper.streams_need_processing():
-        logger.info(f"File needs processing: {path}")
-        data["add_file_to_pending_tasks"] = True
+        if len(dovi) > 0:
+            logger.info(f"File has DOVI metadata: {path}")
+            data["add_file_to_pending_tasks"] = True
 
     return data
 
