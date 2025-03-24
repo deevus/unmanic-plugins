@@ -106,9 +106,80 @@ def on_worker_process(data: dict[str, Any]):
     else:
         data["step"] += 1
 
-    logger.info(f"Step {data['step']}")
+    data["repeat"] = data["step"] < 4
 
-    data["repeat"] = data["step"] < 5
+    file_in = cast(str, data.get("file_in"))
+    file_out = cast(str, data.get("file_out"))
+    original_file_path = cast(str, data.get("original_file_path"))
+    step = cast(int, data.get("step"))
+
+    if step == 1:
+        data["exec_command"] = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            file_in,
+            "-dn",
+            "-c:v",
+            "copy",
+            "-vbsf",
+            "hevc_mp4toannexb",
+            "-f",
+            "hevc",
+            file_out
+        ]
+
+    elif step == 2:
+        data["exec_command"] = [
+            dovi_tool_path,
+            "-i",
+            file_out,
+            "-m",
+            "2",
+            "convert",
+            "--discard",
+            "-",
+            "-o",
+            file_out
+        ]
+
+    elif step == 3:
+        file_out = "output.mp4"
+        data["file_out"] = file_out
+
+        data["exec_command"] = [
+            mp4box_path,
+            "-add",
+            f"'{file_in}':dvp=8.1:xps_inband:hdr=none",
+            "-brand",
+            "mp42isom",
+            "-ab",
+            "dby1",
+            "-no-iod",
+            "-enable",
+            "1",
+            file_out,
+        ]
+
+    elif step == 4:
+        file_out = "output.mp4"
+        data["file_out"] = file_out
+        data["repeat"] = False
+
+        data["exec_command"] = [
+            "ffmpeg",
+            "-i",
+            file_in,
+            "-i",
+            original_file_path,
+            "-map",
+            "0:v",
+            "-map",
+            "1",
+            "-c",
+            "copy",
+            file_out,
+        ]
 
     # Command 1
     # ffmpeg -y -i 'in.mkv' -dn -c:v copy -vbsf hevc_mp4toannexb -f hevc original.hevc
@@ -120,7 +191,6 @@ def on_worker_process(data: dict[str, Any]):
     # MP4Box -add 'out.hevc':dvp=8.1:xps_inband:hdr=none -brand mp42isom -ab dby1 -no-iod -enable 1 'out.mp4' -tmp '/path_to_tmp folder/'
 
     # Command 4
-    # ffmpeg -y -i 'path_to_hevc.mp4' -i 'path_to.mkv' -i 'path_to.srt' -loglevel error -stats -map "0:v?" -map "1:a:1" -map "2:s?" -dn -map_chapters 0 -movflags +faststart -c:v copy -c:a copy -c:s mov_text -metadata title="Movie Title (2023)" -metadata:s:v:0 handler_name="HEVC HDR10 / Dolby Vision" -metadata:s:a:0 handler_name="EAC3 5.1 Dolby Atmos" -metadata:s:s:0 language=ell -metadata:s:s:0 handler_name="MPEG-4 Timed Text" -strict experimental 'path_to_final.mp4'
     # ffmpeg -i path_to_hevc.mp4 -i in.mp4 -map 0:v -map 1 -c copy output.mp4
 
     return data
