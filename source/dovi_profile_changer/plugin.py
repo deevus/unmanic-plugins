@@ -47,7 +47,7 @@ def on_library_management_file_test(data: dict[str, Any]):
         dovi = [data for data in (stream_info.get("side_data_list") or []) if data.get("side_data_type") == "DOVI configuration record"]
 
         if len(dovi) > 0:
-            logger.info(f"File has DOVI metadata: {path}")
+            logger.info(f"File has DOVI metadata: {path} {dovi}")
             data["add_file_to_pending_tasks"] = True
 
     return data
@@ -129,25 +129,19 @@ def on_worker_process(data: dict[str, Any]):
             "hevc_mp4toannexb",
             "-f",
             "hevc",
-            file_out
-        ]
-
-    elif step == 2:
-        data["file_out"] = file_out = f"{os.path.splitext(file_out)[0]}.hevc"
-
-        data["exec_command"] = [
+            "-",
+            "|",
             dovi_tool_path,
             "-m",
             "2",
             "convert",
             "--discard",
-            "-i",
-            file_in,
+            "-",
             "-o",
             file_out
         ]
 
-    elif step == 3:
+    elif step == 2:
         data["file_out"] = file_out = f"{os.path.splitext(file_out)[0]}.mp4"
 
         data["exec_command"] = [
@@ -164,7 +158,7 @@ def on_worker_process(data: dict[str, Any]):
             file_out,
         ]
 
-    elif step == 4:
+    elif step == 3:
         data["file_out"] = file_out = f"{os.path.splitext(file_out)[0]}.mp4"
         data["repeat"] = False
 
